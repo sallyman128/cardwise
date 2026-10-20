@@ -48,15 +48,15 @@ struct CatalogTests {
     }
 
     @Test func cachedNewerCatalogIsUsed() throws {
-        let cacheURL = FileManager.default.temporaryDirectory.appending(path: "\(UUID().uuidString)/cards.json")
-        try FileManager.default.createDirectory(at: cacheURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        let cacheDirectory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        try FileManager.default.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
         let cached = #"""
         {"schemaVersion": 1, "asOf": "2099-01-01", "cards": [{"id": "amex-gold", "name": "Gold Card", "issuer": "American Express",
         "network": "Amex", "annualFee": 325, "currency": "amexMR", "baseRate": 1, "categoryRates": {"dining": 5}, "color": "#000000"}]}
         """#
-        try Data(cached.utf8).write(to: cacheURL)
+        try Data(cached.utf8).write(to: cacheDirectory.appending(path: "cards.json"))
 
-        let store = CatalogStore(bundle: bundle, cacheURL: cacheURL)
+        let store = CatalogStore(bundle: bundle, cacheDirectory: cacheDirectory)
         #expect(store.source == .downloaded)
         #expect(store.catalog.card(id: "amex-gold")?.categoryRates[.dining] == 5)
     }
@@ -68,7 +68,7 @@ struct CatalogTests {
         customized.followsCatalog = false
         customized.baseRate = 9
 
-        let store = CatalogStore(bundle: bundle, cacheURL: nil)
+        let store = CatalogStore(bundle: bundle, cacheDirectory: nil)
         following.baseRate = 7
         store.sync([following, customized])
 
@@ -108,5 +108,40 @@ struct CatalogTests {
         #expect(CategoryMapper.category(for: .cafe, merchant: nil) == .dining)
         #expect(CategoryMapper.category(for: .fitnessCenter, merchant: nil) == .other)
         #expect(CategoryMapper.category(for: nil, merchant: nil) == .other)
+    }
+}
+
+struct ValuationTests {
+    let bundle = Bundle(for: CatalogStore.self)
+
+    @Test func bundledValuationsCoverEveryCurrency() throws {
+        let store = ValuationStore(bundle: bundle, cacheDirectory: nil)
+        for currency in RewardCurrency.allCases {
+            let entry = try #require(store.published.currencies[currency], "missing \(currency)")
+            #expect(entry.cash > 0 && entry.travel > 0)
+            #expect(entry.cash <= entry.travel, "\(currency): cash value above travel value")
+        }
+        #expect(!store.published.sources.isEmpty)
+    }
+
+    @Test func userEditsBeatPublishedValues() {
+        var valuations = Valuations()
+        #expect(valuations.valuation(for: .chaseUR) == RewardCurrency.chaseUR.defaultValuation)
+
+        valuations.published[.chaseUR] = Valuation(cash: 1.0, travel: 2.05)
+        #expect(valuations.valuation(for: .chaseUR).travel == 2.05)
+
+        valuations.overrides[.chaseUR] = Valuation(cash: 1.0, travel: 1.5)
+        #expect(valuations.valuation(for: .chaseUR).travel == 1.5)
+        #expect(valuations.baseline(for: .chaseUR).travel == 2.05)
+    }
+
+    @Test func publishedValuesAreNotSaved() throws {
+        var valuations = Valuations()
+        valuations.published[.amexMR] = Valuation(cash: 0.6, travel: 2.0)
+        valuations.overrides[.chaseUR] = Valuation(cash: 1.0, travel: 1.5)
+        let decoded = try JSONDecoder().decode(Valuations.self, from: JSONEncoder().encode(valuations))
+        #expect(decoded.published.isEmpty)
+        #expect(decoded.overrides[.chaseUR]?.travel == 1.5)
     }
 }

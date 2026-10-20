@@ -7,6 +7,7 @@ struct RootView: View {
     @AppStorage(RootView.onboardedKey) private var hasOnboarded = false
     @Environment(CatalogStore.self) private var catalog
     @Environment(AppSettings.self) private var settings
+    @Environment(ValuationStore.self) private var valuations
     @Environment(\.modelContext) private var modelContext
     @Query private var cards: [UserCard]
 
@@ -37,6 +38,9 @@ struct RootView: View {
             catalog.sync(cards)
             if await catalog.refresh() {
                 catalog.sync(cards)
+            }
+            if await valuations.refresh() {
+                valuations.apply(to: settings)
             }
         }
         .task(id: cheatSheet) {

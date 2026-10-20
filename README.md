@@ -31,7 +31,7 @@ In Debug builds, launching with the `-demo` argument skips onboarding and adds t
 
 ## Updating card terms
 
-Card rates live in [`CardWise/Data/cards.json`](CardWise/Data/cards.json). Each time the app opens, it downloads that file from this repo's `main` branch on GitHub (`CatalogStore.remoteURL`). If the downloaded copy is newer, the app uses it and caches it on the phone.
+Card rates live in [`CardWise/Data/cards.json`](CardWise/Data/cards.json). Each time the app opens, it downloads that file from this repo's `main` branch on GitHub (see `HostedFile`). If the downloaded copy is newer, the app uses it and caches it on the phone.
 
 To change rates:
 
@@ -40,6 +40,8 @@ To change rates:
 3. Commit and push to `main`.
 
 Cards a user has edited keep their changes. Every other card updates automatically.
+
+Point values (cents per point for cash and for travel) work the same way, from [`CardWise/Data/valuations.json`](CardWise/Data/valuations.json). Travel values come from published monthly valuations (The Points Guy, Upgraded Points); cash values are what each program pays when redeemed for cash. A weekly Claude routine refreshes this file, and the app picks it up at launch or from **Update Point Values** in Settings. Values a user edits in Settings are kept.
 
 Merchants and their categories are in [`CardWise/Data/merchants.json`](CardWise/Data/merchants.json). That file ships with the app; updating it requires a new build.
 

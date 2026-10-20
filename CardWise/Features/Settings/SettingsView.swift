@@ -4,6 +4,7 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(AppSettings.self) private var settings
     @Environment(CatalogStore.self) private var catalog
+    @Environment(ValuationStore.self) private var published
     @Query private var cards: [UserCard]
 
     var body: some View {
@@ -16,15 +17,37 @@ struct SettingsView: View {
 
                 Section {
                     ForEach(RewardCurrency.allCases.filter { !$0.isCashBack }) { currency in
-                        ValuationRow(currency: currency, valuations: $settings.valuations)
+                        ValuationRow(
+                            currency: currency,
+                            cashBasis: published.published.currencies[currency]?.cashBasis,
+                            valuations: $settings.valuations
+                        )
                     }
                     if !settings.valuations.overrides.isEmpty {
-                        Button("Reset to Defaults") { settings.valuations = Valuations() }
+                        Button("Use Published Values") { settings.valuations.overrides = [:] }
                     }
+                    Button {
+                        Task {
+                            if await published.refresh() { published.apply(to: settings) }
+                        }
+                    } label: {
+                        HStack {
+                            Text("Update Point Values")
+                            Spacer()
+                            StatusText(status: published.status)
+                        }
+                    }
+                    .disabled(published.status == .checking)
                 } header: {
                     Text("Point values (¢ per point)")
                 } footer: {
-                    Text("Used to compare points with cash back. Travel values assume transferring to partners, which some programs only allow with a premium card. Cash back is always 1¢ per percent.")
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Published values as of \(published.published.asOfDisplay). Travel values come from the sources below and assume transferring points to partners, which some programs only allow with a premium card. Cash values are what each program pays when you redeem for cash. Values you edit are marked and kept when new values arrive.")
+                        ForEach(published.published.sources, id: \.self) { source in
+                            Link(source.name, destination: source.url)
+                                .multilineTextAlignment(.leading)
+                        }
+                    }
                 }
 
                 Section {
@@ -38,7 +61,7 @@ struct SettingsView: View {
                         HStack {
                             Text("Check for Updates")
                             Spacer()
-                            statusView
+                            StatusText(status: catalog.status)
                         }
                     }
                     .disabled(catalog.status == .checking)
@@ -62,9 +85,14 @@ struct SettingsView: View {
         }
     }
 
-    @ViewBuilder
-    private var statusView: some View {
-        switch catalog.status {
+}
+
+/// Trailing status for an update button.
+private struct StatusText: View {
+    let status: RefreshStatus
+
+    var body: some View {
+        switch status {
         case .idle: EmptyView()
         case .checking: ProgressView()
         case .upToDate: Text("Up to date").foregroundStyle(.secondary)
@@ -136,11 +164,27 @@ struct GoalPicker: View {
 
 private struct ValuationRow: View {
     let currency: RewardCurrency
+    let cashBasis: String?
     @Binding var valuations: Valuations
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(currency.displayName)
+            HStack {
+                Text(currency.displayName)
+                if valuations.overrides[currency] != nil {
+                    Text("Edited")
+                        .font(.caption2.weight(.semibold))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(.fill.tertiary, in: .capsule)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            if let cashBasis {
+                Text("Cash: \(cashBasis)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
             HStack(spacing: 16) {
                 field("Cash", \.cash)
                 field("Travel", \.travel)
@@ -159,7 +203,7 @@ private struct ValuationRow: View {
                     var value = valuations.valuation(for: currency)
                     guard value[keyPath: keyPath] != newValue else { return }
                     value[keyPath: keyPath] = newValue
-                    valuations.overrides[currency] = value == currency.defaultValuation ? nil : value
+                    valuations.overrides[currency] = value == valuations.baseline(for: currency) ? nil : value
                 }
             ), format: .number.precision(.fractionLength(0...2)))
             .keyboardType(.decimalPad)

@@ -4,24 +4,14 @@ import SwiftData
 
 /// Holds the card catalog and merchant directory.
 ///
-/// The app ships with `cards.json`, then checks the copy hosted in the GitHub repo on launch.
+/// The app ships with `cards.json`, then checks the copy hosted in the GitHub repo (see `HostedFile`) on launch.
 /// A newer hosted copy is cached on device and used from then on, so rates can be fixed
 /// by editing `CardWise/Data/cards.json` and pushing, without shipping an app update.
 @Observable
 final class CatalogStore {
-    static let remoteURL = URL(string: "https://raw.githubusercontent.com/sallyman128/cardwise/main/CardWise/Data/cards.json")!
-
     enum Source: Equatable {
         case bundled
         case downloaded
-    }
-
-    enum RefreshStatus: Equatable {
-        case idle
-        case checking
-        case upToDate
-        case updated
-        case failed(String)
     }
 
     private(set) var catalog: CardCatalog
@@ -29,15 +19,15 @@ final class CatalogStore {
     private(set) var status: RefreshStatus = .idle
     let directory: MerchantDirectory
 
-    private let cacheURL: URL?
+    private let file: HostedFile
 
-    init(bundle: Bundle = .main, cacheURL: URL? = CatalogStore.defaultCacheURL) {
+    /// `cacheDirectory` is where downloaded copies are kept; nil turns caching off (for tests).
+    init(bundle: Bundle = .main, cacheDirectory: URL? = HostedFile.defaultCacheURL) {
         let bundled = Self.loadBundledCatalog(from: bundle)
-        self.cacheURL = cacheURL
-        self.directory = MerchantDirectory(merchants: Self.loadMerchants(from: bundle))
+        file = HostedFile(name: "cards", cacheURL: cacheDirectory)
+        directory = MerchantDirectory(merchants: Self.loadMerchants(from: bundle))
 
-        if let cacheURL,
-           let data = try? Data(contentsOf: cacheURL),
+        if let data = file.cached(),
            let cached = try? Self.decodeCatalog(data),
            Self.isNewer(cached, than: bundled) {
             catalog = cached
@@ -54,31 +44,19 @@ final class CatalogStore {
     func refresh(session: URLSession = .shared) async -> Bool {
         status = .checking
         do {
-            var request = URLRequest(url: Self.remoteURL, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10)
-            request.setValue("application/json", forHTTPHeaderField: "Accept")
-            let (data, response) = try await session.data(for: request)
-            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
-                status = .failed("The hosted card list isn't available yet.")
-                return false
-            }
+            let data = try await file.fetch(session: session)
             let remote = try Self.decodeCatalog(data)
             guard Self.isNewer(remote, than: catalog) else {
                 status = .upToDate
                 return false
             }
-            if let cacheURL {
-                try? FileManager.default.createDirectory(at: cacheURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-                try? data.write(to: cacheURL, options: .atomic)
-            }
+            file.cache(data)
             catalog = remote
             source = .downloaded
             status = .updated
             return true
-        } catch is DecodingError {
-            status = .failed("The hosted card list couldn't be read.")
-            return false
         } catch {
-            status = .failed("Couldn't reach the server.")
+            status = RefreshStatus(error: error)
             return false
         }
     }
@@ -92,10 +70,6 @@ final class CatalogStore {
     }
 
     // MARK: - Loading
-
-    static let defaultCacheURL: URL? = FileManager.default
-        .urls(for: .applicationSupportDirectory, in: .userDomainMask).first?
-        .appending(path: "catalog/cards.json")
 
     nonisolated static func decodeCatalog(_ data: Data) throws -> CardCatalog {
         let catalog = try JSONDecoder().decode(CardCatalog.self, from: data)
@@ -111,8 +85,7 @@ final class CatalogStore {
     }
 
     nonisolated static func loadBundledCatalog(from bundle: Bundle) -> CardCatalog {
-        guard let url = bundle.url(forResource: "cards", withExtension: "json"),
-              let data = try? Data(contentsOf: url),
+        guard let data = HostedFile(name: "cards", cacheURL: nil).bundled(in: bundle),
               let catalog = try? decodeCatalog(data) else {
             assertionFailure("cards.json is missing or invalid")
             return CardCatalog(schemaVersion: CardCatalog.supportedSchemaVersion, asOf: "", cards: [])

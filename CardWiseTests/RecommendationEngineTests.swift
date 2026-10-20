@@ -58,10 +58,10 @@ struct RecommendationEngineTests {
     // MARK: Ranking
 
     @Test func cashGoalRanksByCashValue() {
-        // Cash: Gold 4 × 1.0 = 4, Sapphire 3 × 1.5 = 4.5, Double Cash 2.
+        // Cash: Sapphire 3 × 1.0 = 3, Gold 4 × 0.6 = 2.4, Double Cash 2.
         let ranked = rank([amexGold, sapphirePreferred, doubleCash], .dining, goal: .maxCash)
         #expect(ranked.map(\.card.name) == ["Sapphire Preferred", "Gold", "Double Cash"])
-        #expect(ranked[0].centsPerDollar == 4.5)
+        #expect(ranked[0].centsPerDollar == 3)
     }
 
     @Test func travelGoalUsesTravelValues() {

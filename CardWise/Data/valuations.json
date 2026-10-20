@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "asOf": "2026-10-20",
+  "sources": [
+    { "name": "The Points Guy monthly valuations (Oct 2026)", "url": "https://thepointsguy.com/news/monthly-valuations/" },
+    { "name": "Upgraded Points valuations (Oct 3, 2026)", "url": "https://upgradedpoints.com/points-and-miles-valuations/" }
+  ],
+  "currencies": {
+    "cashBack":          { "cash": 1.0,  "travel": 1.0,  "cashBasis": "Cash back" },
+    "chaseUR":           { "cash": 1.0,  "travel": 2.05, "cashBasis": "Cash back or statement credit" },
+    "amexMR":            { "cash": 0.6,  "travel": 2.0,  "cashBasis": "Statement credit (1.1¢ with the Schwab Platinum)" },
+    "capitalOneMiles":   { "cash": 0.5,  "travel": 1.85, "cashBasis": "Cash back (1¢ when erasing travel purchases)" },
+    "citiThankYou":      { "cash": 1.0,  "travel": 1.9,  "cashBasis": "Cash back or statement credit" },
+    "biltPoints":        { "cash": 0.55, "travel": 2.2,  "cashBasis": "Statement credit" },
+    "wellsFargoRewards": { "cash": 1.0,  "travel": 1.75, "cashBasis": "Cash back or statement credit" },
+    "deltaSkyMiles":     { "cash": 1.0,  "travel": 1.2,  "cashBasis": "No cash option. Pay with Miles on Delta flights" },
+    "unitedMiles":       { "cash": 1.0,  "travel": 1.2,  "cashBasis": "No cash option. Miles + Money on United flights" },
+    "marriottBonvoy":    { "cash": 0.7,  "travel": 0.75, "cashBasis": "No cash option. Typical hotel award value" },
+    "hiltonHonors":      { "cash": 0.4,  "travel": 0.4,  "cashBasis": "No cash option. Typical hotel award value" }
+  }
+}

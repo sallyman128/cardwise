@@ -5,12 +5,15 @@ import SwiftUI
 struct CardWiseApp: App {
     @State private var settings: AppSettings
     @State private var catalog: CatalogStore
+    @State private var valuations: ValuationStore
     @State private var arrivals: ArrivalMonitor
     private let container: ModelContainer
 
     init() {
         let settings = AppSettings()
         let catalog = CatalogStore()
+        let valuations = ValuationStore()
+        valuations.apply(to: settings)
         do {
             container = try ModelContainer(for: UserCard.self)
         } catch {
@@ -24,6 +27,7 @@ struct CardWiseApp: App {
         arrivals.start()
         _settings = State(initialValue: settings)
         _catalog = State(initialValue: catalog)
+        _valuations = State(initialValue: valuations)
         _arrivals = State(initialValue: arrivals)
     }
 
@@ -32,6 +36,7 @@ struct CardWiseApp: App {
             RootView()
                 .environment(settings)
                 .environment(catalog)
+                .environment(valuations)
                 .environment(arrivals)
         }
         .modelContainer(container)
