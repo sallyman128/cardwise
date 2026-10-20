@@ -6,10 +6,16 @@ struct RootView: View {
 
     @AppStorage(RootView.onboardedKey) private var hasOnboarded = false
     @Environment(CatalogStore.self) private var catalog
+    @Environment(AppSettings.self) private var settings
     @Environment(\.modelContext) private var modelContext
     @Query private var cards: [UserCard]
 
     var body: some View {
+        let cheatSheet = CheatSheetBuilder.make(
+            cards: cards.sorted { $0.sortOrder < $1.sortOrder }.map(\.rewards),
+            goal: settings.goal,
+            valuations: settings.valuations
+        )
         TabView {
             Tab("Nearby", systemImage: "location.fill") {
                 NearbyView()
@@ -32,6 +38,9 @@ struct RootView: View {
             if await catalog.refresh() {
                 catalog.sync(cards)
             }
+        }
+        .task(id: cheatSheet) {
+            CheatSheetBuilder.publish(cheatSheet)
         }
     }
 }

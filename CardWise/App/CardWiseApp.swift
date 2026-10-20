@@ -3,11 +3,13 @@ import SwiftUI
 
 @main
 struct CardWiseApp: App {
-    @State private var settings = AppSettings()
+    @State private var settings: AppSettings
     @State private var catalog: CatalogStore
+    @State private var arrivals: ArrivalMonitor
     private let container: ModelContainer
 
     init() {
+        let settings = AppSettings()
         let catalog = CatalogStore()
         do {
             container = try ModelContainer(for: UserCard.self)
@@ -17,7 +19,12 @@ struct CardWiseApp: App {
         #if DEBUG
         DemoData.seedIfRequested(into: container.mainContext, catalog: catalog)
         #endif
+        // Set up before launch finishes so background relaunches from a visit get delivered.
+        let arrivals = ArrivalMonitor(container: container, directory: catalog.directory, settings: settings)
+        arrivals.start()
+        _settings = State(initialValue: settings)
         _catalog = State(initialValue: catalog)
+        _arrivals = State(initialValue: arrivals)
     }
 
     var body: some Scene {
@@ -25,6 +32,7 @@ struct CardWiseApp: App {
             RootView()
                 .environment(settings)
                 .environment(catalog)
+                .environment(arrivals)
         }
         .modelContainer(container)
     }

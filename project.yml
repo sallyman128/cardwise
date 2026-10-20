@@ -11,12 +11,22 @@ settings:
     SWIFT_APPROACHABLE_CONCURRENCY: YES
     MARKETING_VERSION: "1.0"
     CURRENT_PROJECT_VERSION: "1"
+    DEVELOPMENT_TEAM: D687WYY25S
+    CODE_SIGN_STYLE: Automatic
 targets:
   CardWise:
     type: application
     platform: iOS
     sources:
       - CardWise
+      - SharedKit
+    dependencies:
+      - target: CardWiseWidgets
+    entitlements:
+      path: CardWise/Resources/CardWise.entitlements
+      properties:
+        keychain-access-groups:
+          - $(AppIdentifierPrefix)com.salmaanali.CardWise.shared
     info:
       path: CardWise/Resources/Info.plist
       properties:
@@ -27,12 +37,37 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         NSLocationWhenInUseUsageDescription: CardWise uses your location to find the place you're at and suggest the best card to use there. Your location never leaves your phone.
+        NSLocationAlwaysAndWhenInUseUsageDescription: With Always access, CardWise can notify you which card to use when you arrive at a store, even when the app is closed. Your location never leaves your phone.
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.salmaanali.CardWise
         TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+  CardWiseWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - CardWiseWidgets
+      - SharedKit
+    entitlements:
+      path: CardWiseWidgets/CardWiseWidgets.entitlements
+      properties:
+        keychain-access-groups:
+          - $(AppIdentifierPrefix)com.salmaanali.CardWise.shared
+    info:
+      path: CardWiseWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: CardWise
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.salmaanali.CardWise.Widgets
+        TARGETED_DEVICE_FAMILY: "1"
+        SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
   CardWiseTests:
     type: bundle.unit-test
     platform: iOS

@@ -20,6 +20,8 @@
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>With Always access, CardWise can notify you which card to use when you arrive at a store, even when the app is closed. Your location never leaves your phone.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>CardWise uses your location to find the place you're at and suggest the best card to use there. Your location never leaves your phone.</string>
 	<key>UILaunchScreen</key>

@@ -12,6 +12,8 @@ struct SettingsView: View {
             Form {
                 GoalPicker(goal: $settings.goal)
 
+                ArrivalAlertsSection()
+
                 Section {
                     ForEach(RewardCurrency.allCases.filter { !$0.isCashBack }) { currency in
                         ValuationRow(currency: currency, valuations: $settings.valuations)
