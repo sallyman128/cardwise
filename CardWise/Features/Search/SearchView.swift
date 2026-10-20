@@ -1,8 +1,11 @@
+import SwiftData
 import SwiftUI
 
 struct SearchView: View {
     @State private var query = ""
     @Environment(CatalogStore.self) private var catalog
+    @Environment(AppSettings.self) private var settings
+    @Query(sort: \UserCard.sortOrder) private var cards: [UserCard]
 
     private static let popularIDs = [
         "amazon", "doordash", "ubereats", "uber", "netflix", "target",
@@ -14,7 +17,7 @@ struct SearchView: View {
             List {
                 if query.isEmpty {
                     popularSection
-                    categorySection(title: "Browse by category")
+                    categorySection(title: "Best card by category")
                 } else {
                     let results = catalog.directory.search(query)
                     if !results.isEmpty {
@@ -60,13 +63,65 @@ struct SearchView: View {
     }
 
     private func categorySection(title: String) -> some View {
-        Section(title) {
+        let rewards = cards.map(\.rewards)
+        return Section {
             ForEach(SpendCategory.allCases) { category in
+                let best = RecommendationEngine.rank(
+                    rewards, for: PurchaseContext(category: category),
+                    goal: settings.goal, valuations: settings.valuations
+                ).first
                 NavigationLink(value: PurchaseContext(category: category)) {
-                    Label(category.displayName, systemImage: category.symbol)
+                    CategoryRow(category: category, best: best)
                 }
             }
+        } header: {
+            Text(title)
+        } footer: {
+            if !cards.isEmpty {
+                Text("Based on your goal: \(settings.goal.title). Tap a category to compare all your cards.")
+            }
         }
+    }
+}
+
+/// A category with the best card for it, like the widget shows.
+private struct CategoryRow: View {
+    let category: SpendCategory
+    let best: Recommendation?
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: category.symbol)
+                .frame(width: 28)
+                .foregroundStyle(.tint)
+            Text(category.displayName)
+            Spacer(minLength: 8)
+            if let best {
+                HStack(spacing: 8) {
+                    VStack(alignment: .trailing, spacing: 1) {
+                        Text(best.card.name)
+                            .font(.subheadline.weight(.medium))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                        Text(Self.rate(best))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    RoundedRectangle(cornerRadius: 3, style: .continuous)
+                        .fill(Color(hex: best.card.colorHex).gradient)
+                        .frame(width: 26, height: 16)
+                }
+                .layoutPriority(1)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    /// "4x · 8¢" for points, "3%" for cash back.
+    private static func rate(_ recommendation: Recommendation) -> String {
+        let rate = RecommendationEngine.format(recommendation.rate)
+        if recommendation.card.currency.isCashBack { return "\(rate)%" }
+        return "\(rate)x · \(RecommendationEngine.format(recommendation.centsPerDollar))¢"
     }
 }
 
